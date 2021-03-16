@@ -1,0 +1,33 @@
+select 	to_char(to_timestamp(dt_registro,'dd/mm/yyyy'),'dd') dia,
+
+		obter_dados_registro(dt_registro, nr_seq_equipamento, '06:00','10:59','PRU')pri_manha,
+		obter_dados_registro(dt_registro, nr_seq_equipamento, '06:00','10:59','MINU')min_manha,
+		obter_dados_registro(dt_registro, nr_seq_equipamento, '06:00','10:59','MAXU')max_manha,
+		obter_dados_registro(dt_registro, nr_seq_equipamento, '06:00','10:59','OBST')obs_manha,
+
+		obter_dados_registro(dt_registro, nr_seq_equipamento, '11:00','15:59','PRU')pri_tarde,
+		obter_dados_registro(dt_registro, nr_seq_equipamento, '11:00','15:59','MINU')min_tarde,
+		obter_dados_registro(dt_registro, nr_seq_equipamento, '11:00','15:59','MAXU')max_tarde,
+		obter_dados_registro(dt_registro, nr_seq_equipamento, '11:00','15:59','OBST')obs_tarde,
+
+		obter_dados_registro(dt_registro, nr_seq_equipamento, '16:00','20:59','PRU')pri_fim_tarde,
+		obter_dados_registro(dt_registro, nr_seq_equipamento, '16:00','20:59','MINU')min_fim_tarde,
+		obter_dados_registro(dt_registro, nr_seq_equipamento, '16:00','20:59','MAXU')max_fim_tarde,
+		obter_dados_registro(dt_registro, nr_seq_equipamento, '16:00','20:59','OBST')obs_fim_tarde,
+
+		obter_dados_registro(dt_registro, nr_seq_equipamento, '21:00','23:59','PRU')pri_noite,
+		obter_dados_registro(dt_registro, nr_seq_equipamento, '21:00','23:59','MINU')min_noite,
+		obter_dados_registro(dt_registro, nr_seq_equipamento, '21:00','23:59','MAXU')max_noite,
+		obter_dados_registro(dt_registro, nr_seq_equipamento, '21:00','23:59','OBST')obs_noite,
+
+		obter_dados_registro(dt_registro, nr_seq_equipamento, '00:00','05:59','PRU')pri_madruga,
+		obter_dados_registro(dt_registro, nr_seq_equipamento, '00:00','05:59','MINU')min_madruga,
+		obter_dados_registro(dt_registro, nr_seq_equipamento, '00:00','05:59','MAXU')max_madruga,
+		obter_dados_registro(dt_registro, nr_seq_equipamento, '00:00','05:59','OBST')obs_madruga
+from(
+	SELECT 	TO_CHAR(a.dt_registro,'dd/mm/yyyy')dt_registro, nr_seq_equipamento
+	FROM  registro a
+	WHERE TO_CHAR(a.dt_registro,'mm/yyyy') = $P{mes_referencia}
+	and nr_seq_equipamento = $P{nr_seq_equipamento}
+	GROUP BY TO_CHAR(a.dt_registro,'dd/mm/yyyy'), nr_seq_equipamento
+)a

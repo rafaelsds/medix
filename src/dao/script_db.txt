@@ -1,0 +1,220 @@
+CREATE SEQUENCE usuario_seq START 1;
+CREATE SEQUENCE equipamento_seq START 1;
+CREATE SEQUENCE registro_seq START 1;
+CREATE SEQUENCE gateway_seq START 1;
+CREATE SEQUENCE localizacao_seq START 1;
+CREATE SEQUENCE alerta_seq START 1;
+
+CREATE TABLE equipamento (	nr_sequencia INT PRIMARY key, 
+								ds_equipamento VARCHAR(255), 
+								temp_minima NUMERIC(10,2), 
+								temp_maxima numeric(10,2),
+								umidade_minima NUMERIC(10,2), 
+								umidade_maxima NUMERIC(10,2), 
+								nr_seq_localizacao integer, 
+								ds_mac_circuito VARCHAR(255),
+								ie_situacao VARCHAR(1),
+								ie_manutencao varchar(1));
+															
+CREATE TABLE usuario (	nr_sequencia INT PRIMARY key, 
+								nm_pessoa VARCHAR(255), 
+								nm_usuario VARCHAR(50)unique not null, 
+								ds_senha VARCHAR(255)not null,
+								dt_nascimento TIMESTAMP, 
+								ds_email VARCHAR(255),
+								ie_situacao VARCHAR(1),
+								nr_telefone varchar(13),
+								ds_papel_usuario VARCHAR(5),
+								id_user_telegram int);
+
+
+CREATE TABLE registro (	nr_sequencia INT PRIMARY key, 
+								nr_seq_equipamento int not null, 
+								temperatura NUMERIC(10,2), 
+								umidade NUMERIC(10,2),
+								dt_registro TIMESTAMP not null, 
+								dt_modificacao TIMESTAMP, 								
+								ds_observacao VARCHAR(255),
+								nm_usuario VARCHAR(50) not null,
+								nm_usuario_modif VARCHAR(50),
+								ie_desvio_temp VARCHAR(1),
+								ie_desvio_umidade VARCHAR(1),
+								CONSTRAINT fk_registro_equip FOREIGN KEY(nr_seq_equipamento)REFERENCES equipamento(nr_sequencia));
+
+
+CREATE TABLE gateway (	nr_sequencia INT PRIMARY key, 
+								ds_gateway VARCHAR(255), 
+								ds_localizacao VARCHAR(255), 
+								ds_mac_circuito VARCHAR(255),
+								ie_situacao VARCHAR(1));
+
+
+CREATE TABLE localizacao (nr_sequencia INT PRIMARY key, 
+								ds_localizacao VARCHAR(255), 
+								ie_situacao VARCHAR(1));
+
+
+CREATE TABLE parametros_gerenciador(nr_sequencia INT PRIMARY key, 
+								ds_servidor_smtp VARCHAR(255), 
+								nr_porta_serv_email	int,
+								ds_email varchar(255),
+								ds_senha_email varchar(255),	
+								ds_nome_exibicao_email varchar(255),	
+								ie_situacao VARCHAR(1),
+								ds_bot varchar(255),
+								ds_token varchar(255),
+								ie_situacao_bot varchar(1),
+								nr_min_atualizacao int,
+								ie_situacao_gerenciador varchar(1));
+
+
+insert into parametros_gerenciador(nr_sequencia, ds_servidor_smtp, nr_porta_serv_email,ie_situacao,nr_min_atualizacao)
+values(1,'smtp.gmail.com',465,'A',5);
+
+
+CREATE TABLE alerta(nr_sequencia INT PRIMARY key, 
+					nr_seq_localizacao int,
+					nr_seq_equipamento int,
+					nr_seq_usuario int,
+					ie_situacao varchar(1),
+					ie_monitor_temp varchar(1),
+					ie_monitor_umidade varchar(1),
+					ie_alerta_telegram varchar(1),
+					ie_alerta_email varchar(1),
+				    CONSTRAINT uq_local_equip_usu UNIQUE (nr_seq_localizacao, nr_seq_equipamento,nr_seq_usuario));
+
+
+CREATE OR REPLACE FUNCTION public.obter_dados_registro(
+	dt_registro_p character varying,
+	nr_seq_equipamento_p integer,
+	hr_inicio_p character varying,
+	hr_final_p character varying,
+	ie_retorno_p character varying)
+    RETURNS character varying
+    LANGUAGE 'plpgsql'
+
+    COST 100
+    VOLATILE 
+    
+AS $BODY$
+DECLARE 
+nr_seq_w integer;
+ds_retorno_w varchar(200);
+
+begin
+
+	if(ie_retorno_p = 'PRT')then
+	
+		SELECT min(nr_sequencia)
+		into nr_seq_w
+		FROM registro a
+		WHERE to_char(a.dt_registro,'dd/mm/yyyy') = dt_registro_p
+		and a.nr_seq_equipamento = nr_seq_equipamento_p
+		AND to_timestamp(TO_CHAR(a.dt_registro,'hh24:mi'),'hh24:mi') BETWEEN to_timestamp(hr_inicio_p,'hh24:mi') AND TO_TIMESTAMP(hr_final_p,'hh24:mi');
+		
+		select temperatura
+		into ds_retorno_w
+		from registro
+		where nr_sequencia = nr_seq_w;
+	
+	elsif(ie_retorno_p = 'MINT')then
+	
+		SELECT min(temperatura)
+		into ds_retorno_w
+		FROM registro a
+		WHERE to_char(a.dt_registro,'dd/mm/yyyy') = dt_registro_p
+		and a.nr_seq_equipamento = nr_seq_equipamento_p
+		AND to_timestamp(TO_CHAR(a.dt_registro,'hh24:mi'),'hh24:mi') BETWEEN to_timestamp(hr_inicio_p,'hh24:mi') AND TO_TIMESTAMP(hr_final_p,'hh24:mi');
+		
+	elsif(ie_retorno_p = 'MAXT')then
+	
+		SELECT max(temperatura)
+		into ds_retorno_w
+		FROM registro a
+		WHERE to_char(a.dt_registro,'dd/mm/yyyy') = dt_registro_p
+		and a.nr_seq_equipamento = nr_seq_equipamento_p
+		AND to_timestamp(TO_CHAR(a.dt_registro,'hh24:mi'),'hh24:mi') BETWEEN to_timestamp(hr_inicio_p,'hh24:mi') AND TO_TIMESTAMP(hr_final_p,'hh24:mi');
+	
+	elsif(ie_retorno_p = 'OBST')then
+	
+		SELECT max(ds_observacao)
+		into ds_retorno_w
+		FROM registro a
+		WHERE to_char(a.dt_registro,'dd/mm/yyyy') = dt_registro_p
+		and a.nr_seq_equipamento = nr_seq_equipamento_p
+		AND to_timestamp(TO_CHAR(a.dt_registro,'hh24:mi'),'hh24:mi') BETWEEN to_timestamp(hr_inicio_p,'hh24:mi') AND TO_TIMESTAMP(hr_final_p,'hh24:mi')
+		and ds_observacao is not null;
+	
+	elsif(ie_retorno_p = 'MINU')then
+	
+		SELECT min(umidade)
+		into ds_retorno_w
+		FROM registro a
+		WHERE to_char(a.dt_registro,'dd/mm/yyyy') = dt_registro_p
+		and a.nr_seq_equipamento = nr_seq_equipamento_p
+		AND to_timestamp(TO_CHAR(a.dt_registro,'hh24:mi'),'hh24:mi') BETWEEN to_timestamp(hr_inicio_p,'hh24:mi') AND TO_TIMESTAMP(hr_final_p,'hh24:mi');
+		
+	elsif(ie_retorno_p = 'MAXU')then
+	
+		SELECT max(umidade)
+		into ds_retorno_w
+		FROM registro a
+		WHERE to_char(a.dt_registro,'dd/mm/yyyy') = dt_registro_p
+		and a.nr_seq_equipamento = nr_seq_equipamento_p
+		AND to_timestamp(TO_CHAR(a.dt_registro,'hh24:mi'),'hh24:mi') BETWEEN to_timestamp(hr_inicio_p,'hh24:mi') AND TO_TIMESTAMP(hr_final_p,'hh24:mi');
+	
+	elsif(ie_retorno_p = 'PRU')then
+		SELECT min(nr_sequencia)
+		into nr_seq_w
+		FROM registro a
+		WHERE to_char(a.dt_registro,'dd/mm/yyyy') = dt_registro_p
+		and a.nr_seq_equipamento = nr_seq_equipamento_p
+		AND to_timestamp(TO_CHAR(a.dt_registro,'hh24:mi'),'hh24:mi') BETWEEN to_timestamp(hr_inicio_p,'hh24:mi') AND TO_TIMESTAMP(hr_final_p,'hh24:mi');
+
+		select umidade
+		into ds_retorno_w
+		from registro
+		where nr_sequencia = nr_seq_w;
+	end if;
+	
+	return ds_retorno_w;
+	
+end;
+$BODY$;
+
+
+
+
+
+CREATE OR REPLACE FUNCTION public.obter_dados_tabela(
+	ds_tabela character varying,
+	ds_atributo character varying,
+	ds_where character varying)
+	
+    RETURNS character varying
+    LANGUAGE 'plpgsql'
+
+    COST 100
+    VOLATILE 
+    
+AS $BODY$
+DECLARE 
+
+ds_sql_w varchar(2000);
+ds_retorno_w varchar(2000);
+
+begin
+
+	ds_sql_w:='select '||ds_atributo||' from '||ds_tabela||' where '||ds_where;
+	
+	EXECUTE ds_sql_w INTO ds_retorno_w;
+	
+	return ds_retorno_w;
+	
+end;
+$BODY$;
+
+
+
+
+
